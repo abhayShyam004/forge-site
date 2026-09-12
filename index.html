@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Forge — Stop managing tasks. Start completing quests.</title>
+<meta name="description" content="Forge turns your goals, habits and daily tasks into RPG quests. Earn XP, build streaks, level up." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<header class="topbar">
+  <div class="brand"><span class="brand-mark">◆</span> FORGE</div>
+  <div class="top-actions">
+    <button id="coachBtn" class="btn btn-gold">AI Coach</button>
+    <button id="settingsBtn" class="btn btn-ghost">Settings</button>
+  </div>
+</header>
+
+<main class="layout">
+  <!-- Character card -->
+  <aside class="card character">
+    <p class="eyebrow">Adventurer</p>
+    <h2 id="charTitle">Novice</h2>
+    <div class="level-row"><span id="levelBadge">Lv 1</span><span id="xpText">0 XP</span></div>
+    <div class="xpbar"><div id="xpFill" class="xpfill"></div></div>
+    <div class="stats">
+      <div class="stat"><span class="stat-num" id="streakNum">0</span><span class="stat-label">day streak</span></div>
+      <div class="stat"><span class="stat-num" id="doneNum">0</span><span class="stat-label">quests done</span></div>
+      <div class="stat"><span class="stat-num" id="openNum">0</span><span class="stat-label">active</span></div>
+    </div>
+    <p id="attrLine" class="attrline">No attributes yet — complete a quest</p>
+    <button id="checkinBtn" class="btn btn-gold btn-block">Daily Check-in</button>
+    <p class="hint">Complete at least one quest a day to keep your streak alive.</p>
+  </aside>
+
+  <!-- Quest board -->
+  <section class="quests">
+    <div class="hero">
+      <h1>Stop managing tasks.<br />Start completing <em>quests</em>.</h1>
+      <p>Every goal becomes a quest. Finish it, earn XP, level up. Your AI coach keeps you honest.</p>
+    </div>
+
+    <form id="questForm" class="card quest-form">
+      <input id="questTitle" type="text" placeholder="Name your quest… (e.g. Run 5km)" maxlength="120" required />
+      <select id="questRank" aria-label="Quest rank">
+        <option value="side">Side quest · 10 XP</option>
+        <option value="minor" selected>Minor quest · 25 XP</option>
+        <option value="major">Major quest · 50 XP</option>
+        <option value="epic">Epic quest · 100 XP</option>
+      </select>
+      <button type="submit" class="btn btn-gold">Add quest</button>
+    </form>
+
+    <h3 class="section-title">Active quests</h3>
+    <ul id="activeList" class="quest-list"></ul>
+
+    <h3 class="section-title">Completed</h3>
+    <ul id="doneList" class="quest-list done"></ul>
+
+    <h3 class="section-title">Journal → auto-forge</h3>
+    <div class="card journal-card">
+      <p class="hint">Dump your day, goals, scattered thoughts — the AI reads it and forges quests for you. No manual quest-making needed.</p>
+      <textarea id="journalText" rows="4" placeholder="Today I… I want to… I keep putting off…"></textarea>
+      <div class="journal-row">
+        <button id="forgeBtn" class="btn btn-gold">Forge my quests</button>
+        <label class="auto-row"><input type="checkbox" id="autoForge" /> Auto-forge when I open the site</label>
+      </div>
+      <ul id="journalList" class="journal-list"></ul>
+    </div>
+  </section>
+</main>
+
+<!-- AI Coach drawer -->
+<div id="coachDrawer" class="drawer" hidden>
+  <div class="drawer-head">
+    <strong>AI Coach</strong>
+    <button class="btn btn-ghost btn-sm" id="coachClose">Close</button>
+  </div>
+  <div id="chatLog" class="chatlog"></div>
+  <form id="chatForm" class="chatform">
+    <input id="chatInput" type="text" placeholder="Ask for a plan, a push, smaller steps…" maxlength="500" autocomplete="off" />
+    <button class="btn btn-gold" type="submit">Send</button>
+  </form>
+</div>
+
+<!-- Settings drawer -->
+<div id="settingsDrawer" class="drawer" hidden>
+  <div class="drawer-head">
+    <strong>Settings</strong>
+    <button class="btn btn-ghost btn-sm" id="settingsClose">Close</button>
+  </div>
+  <div class="settings-body">
+    <p class="hint">Keys stay in this browser only (localStorage). Never shared anywhere.</p>
+    <label>OpenRouter API key
+      <input id="orKey" type="password" placeholder="sk-or-…" autocomplete="off" />
+    </label>
+    <label>OpenRouter model
+      <input id="orModel" type="text" value="meta-llama/llama-3.3-70b-instruct:free" />
+    </label>
+    <label>NVIDIA NIM API key (backup)
+      <input id="nimKey" type="password" placeholder="nvapi-…" autocomplete="off" />
+    </label>
+    <label>NVIDIA NIM model
+      <input id="nimModel" type="text" value="meta/llama-3.3-70b-instruct" />
+    </label>
+    <button id="saveSettings" class="btn btn-gold btn-block">Save</button>
+    <button id="resetAll" class="btn btn-danger btn-block">Reset all progress</button>
+  </div>
+</div>
+
+<div id="toast" class="toast" hidden></div>
+
+<script src="app.js"></script>
+</body>
+</html>
