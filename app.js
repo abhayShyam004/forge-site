@@ -169,6 +169,18 @@ $('resetAll').onclick = () => {
   save(); render(); renderJournal(); toggle('settingsDrawer', false);
 };
 
+async function testProvider(which) {
+  const key = which === 'or' ? $('orKey').value.trim() : $('nimKey').value.trim();
+  const model = which === 'or' ? ($('orModel').value.trim() || S.orModel) : ($('nimModel').value.trim() || S.nimModel);
+  const url = which === 'or' ? 'https://openrouter.ai/api/v1/chat/completions' : 'https://integrate.api.nvidia.com/v1/chat/completions';
+  const st = $('testStatus'); st.textContent = 'Testing…';
+  if (!key) { st.textContent = 'Paste key first'; return; }
+  try { await callChat(url, key, model, [{ role: 'user', content: 'Reply with just OK' }]); st.textContent = '✓ ' + which.toUpperCase() + ' OK — model responded'; }
+  catch (e) { st.textContent = '✗ ' + e.message.slice(0, 180); }
+}
+const _tOr = document.getElementById('testOr'); if (_tOr) _tOr.onclick = () => testProvider('or');
+const _tNi = document.getElementById('testNim'); if (_tNi) _tNi.onclick = () => testProvider('nim');
+
 // ---- AI Coach: OpenRouter primary, NVIDIA NIM backup ----
 function chatAdd(role, text) {
   const log = $('chatLog');
@@ -189,15 +201,29 @@ function chatAdd(role, text) {
 }
 
 async function callChat(url, key, model, messages) {
-  const r = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key },
-    body: JSON.stringify({ model, messages, max_tokens: 600, temperature: 0.8 }),
-  });
-  if (!r.ok) throw new Error('HTTP ' + r.status);
+  let r;
+  try {
+    r = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer ' + key,
+        'HTTP-Referer': location.origin + location.pathname,
+        'X-Title': 'Forge',
+      },
+      body: JSON.stringify({ model, messages, max_tokens: 600, temperature: 0.8 }),
+    });
+  } catch (err) {
+    throw new Error('network/CORS blocked (' + (err && err.message ? err.message : err) + ')');
+  }
+  if (!r.ok) {
+    let detail = '';
+    try { detail = (await r.text()).slice(0, 220); } catch (_) {}
+    throw new Error('HTTP ' + r.status + (detail ? ' — ' + detail : ''));
+  }
   const d = await r.json();
   const c = d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content;
-  if (!c) throw new Error('empty reply');
+  if (!c) throw new Error('empty reply from model');
   return c;
 }
 
@@ -213,6 +239,7 @@ $('chatForm').onsubmit = async (e) => {
   chatAdd('coach', '…');
   const pending = $('chatLog').lastChild;
   const fail = (m) => { pending.textContent = m; };
+  const errs = [];
   if (S.orKey) {
     try {
       const reply = await callChat('https://openrouter.ai/api/v1/chat/completions', S.orKey, S.orModel, msgs);
@@ -220,7 +247,7 @@ $('chatForm').onsubmit = async (e) => {
       chatAdd('coach', reply);
       history.push({ role: 'assistant', content: reply });
       return;
-    } catch (err) { /* fall through to NIM */ }
+    } catch (err) { errs.push('OpenRouter: ' + err.message); }
   }
   if (S.nimKey) {
     try {
@@ -229,9 +256,9 @@ $('chatForm').onsubmit = async (e) => {
       chatAdd('coach', reply);
       history.push({ role: 'assistant', content: reply });
       return;
-    } catch (err) { fail('Both providers failed. Check keys in Settings.'); return; }
+    } catch (err) { errs.push('NIM: ' + err.message); }
   }
-  fail('Add your OpenRouter key in Settings first (NVIDIA NIM works as backup).');
+  fail(errs.length ? errs.join('\n') + '\nCheck keys in Settings (Test buttons show status).' : 'Add your OpenRouter key in Settings first (NVIDIA NIM works as backup).');
 };
 
 // ---- Journal → autonomous quest forging ----
@@ -290,18 +317,18 @@ async function forgeFromJournal(silent) {
     { role: 'system', content: FORGE_SYS },
     { role: 'user', content: `Player: Lv ${level()} ${titleFor(level())}, top attributes: ${topAttrs().map(([k, v]) => k + ' ' + v).join(', ') || 'none'}.\nJournal:\n${text.slice(0, 2000)}` },
   ];
-  let quests = [];
+  let quests = []; let ferrs = [];
   if (S.orKey) {
     try {
       quests = parseForge(await callChat('https://openrouter.ai/api/v1/chat/completions', S.orKey, S.orModel, msgs));
-    } catch (err) { /* fall through to NIM */ }
+    } catch (err) { ferrs.push('OpenRouter: ' + err.message); }
   }
   if (!quests.length && S.nimKey) {
     try {
       quests = parseForge(await callChat('https://integrate.api.nvidia.com/v1/chat/completions', S.nimKey, S.nimModel, msgs));
-    } catch (err) { /* fall through */ }
+    } catch (err) { ferrs.push('NIM: ' + err.message); }
   }
-  if (!quests.length) { if (!silent) toast('The forge is cold — providers failed. Check keys.'); return; }
+  if (!quests.length) { if (!silent) toast(ferrs.length ? ferrs.join(' | ') : 'The forge is cold — providers failed. Check keys.'); return; }
   if (editId) {
     const j = S.journal.find((x) => x.id === editId);
     if (j) { j.text = text.slice(0, 2000); j.forged = quests.length; }
