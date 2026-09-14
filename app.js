@@ -222,9 +222,13 @@ async function callChat(url, key, model, messages) {
     throw new Error('HTTP ' + r.status + (detail ? ' — ' + detail : ''));
   }
   const d = await r.json();
-  const c = d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content;
-  if (!c) throw new Error('empty reply from model');
-  return c;
+  let c = d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content;
+  if (!c) c = d.choices && d.choices[0] && (d.choices[0].text || d.choices[0].message && d.choices[0].message.reasoning);
+  if (!c || !String(c).trim()) {
+    const preview = JSON.stringify(d).slice(0, 400);
+    throw new Error('empty reply from model — ' + preview);
+  }
+  return String(c);
 }
 
 const history = [];
